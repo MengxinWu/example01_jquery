@@ -8,9 +8,7 @@ function highlightPage() {
 }
 
 function moveElement(elementId,finalX,finalY,interval) {
-	if(!document.getElementById) return false;
-	if(!document.getElementById(elementId)) return false;
-	var elem = document.getElementById(elementId);
+	var elem = $("#"+elementId)[0];
 	if(elem.movement) clearTimeout(elem.movement);
 	if(!elem.style.left) elem.style.left = "0px";
 	if(!elem.style.top) elem.style.top = "0px";
@@ -54,7 +52,7 @@ function prepareInternalnav(){
 	$("article nav a").each(function(){
 		var sectionId = $(this).attr("href").split("#")[1];
 		$("#" + sectionId).hide();
-		$(this).click(function(){showSection(sectionId); return false;});
+		$(this).click(function(){ showSection(sectionId); return false;});
 	});
 }
 
@@ -84,12 +82,6 @@ function displayLiveBetter(){
 	$("article:first").append($("<h3>Abbreviations</h3>"), $dlist);
 }
 
-function focusLabels(){
-	$("label").each(function(){
-		$(this).click(function(){$("#"+$(this).attr("for")).focus();});
-	});
-}
-
 function resetFields(whichform){
 	var elements = whichform.elements;
 	if(elements.length === 0) return false;
@@ -116,47 +108,41 @@ function resetFields(whichform){
 }
 
 function submitFormWithAjax(whichform, element){
-	var requset = new XMLHttpRequest();
-	if(!requset) return false;
 	$(element).empty();
 	$(element).append($("<img>").attr({"src": "imgs/loading.gif", "alt": "Loading..."}));
 	var dataParts = [];
 	for(var i=0; i<whichform.elements.length; i++){
-		dataParts[i] = whichform.elements[i].name + "=" + encodeURIComponent(whichform.elements[i].value);		
+		dataParts[i] = whichform.elements[i].name + "=" + whichform.elements[i].value;		
 	}
 	var data = dataParts.join("&");
-	requset.open("post", whichform.getAttribute("action"), true);
-	requset.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	requset.onreadystatechange = function(){
-		if(requset.readyState === 4){
-			if(requset.status === 200 || requset.status === 0){
-				var matches = requset.responseText.match(/<article>([\s\S]+)<\/article>/);
-				if(matches.length>0){
-					element.innerHTML = matches[1];
-				} else{
-					element.innerHTML = "<p>Oops, there was an error. Sorry.";
-				}
+	$.ajax({
+		url: whichform.getAttribute("action"),
+		type: "POST",
+		data: data,
+		dataType: "html",
+		success: function(data){
+			var matches = data.match(/<article>([\s\S]+)<\/article>/);
+			if(matches.length>0){
+				element.html(matches[1]);
 			} else{
-				element.innerHTML = "<p>" + requset.statusText + "</p>";
+				element.html("<p>Oops, there was an error. Sorry.");
 			}
 		}
-	};
-	requset.send(data);
+	});
 	return true;
 }
 
 function prepareForms(){
-	if(!document.forms) return false;
-	var forms = document.forms;
-	if(forms.length === 0) return false;
-	for(var i=0; i<forms.length; i++){
-		resetFields(forms[i]);
-		forms[i].onsubmit = function(){
-			var article = document.getElementsByTagName("article")[0];
-			if(submitFormWithAjax(this, article)) return false;
+	$("label").each(function(){
+		$(this).click(function(){$("#"+$(this).attr("for")).focus();});
+	});
+	$("form").each(function(){
+		resetFields(this);
+		$(this).submit(function(event){
+			if(submitFormWithAjax(this, $("article:first"))){ event.preventDefault(); }
 			return true;
-		};
-	}
+		});
+	});
 }
 
 $(function(){
@@ -165,6 +151,5 @@ $(function(){
 	prepareInternalnav();
 	prepareGallery();
 	displayLiveBetter();
-	focusLabels();
 	prepareForms();
 });
